@@ -1,0 +1,106 @@
+---
+title: "CourseProject"
+author: "Gustavo Alurralde"
+date: "25 de diciembre de 2015"
+output: html_document
+---
+
+#Course Project
+
+##Introduction
+
+This document tries to answer the points of the course project of the Practical Machine Learning Course.
+
+##Preparation
+
+First I will load the data and the caret package.
+
+```{r, echo=FALSE}
+  load("data.RData")
+```
+
+```{r, results='hide', error=FALSE, warning=FALSE, message=FALSE}
+  library(caret)
+  datos <- read.csv(file = "./pml-training.csv")
+```
+
+Second I will cut the values that present NA values as the attributes: X, user_name, raw_timestamp_part_1, 
+raw_timestamp_part_2, cvtd_timestamp, new_window and num_window that i found dispensable.
+
+```{r}
+  ndatos <- datos[,c(8,9,10,11,37,38,39,40,41,42,43,44,45,46,47,48,49,60,61,62,63,64,65,66,67,68,84,85,86,102,113,114,115,
+                     116,117,118,119,120,121,122,123,124,140,151,152,153,154,155,156,157,158,159,160)]
+```
+
+After that, I set the seed for reproducibility purposes and split the data. 90% of the data for training and 10% for testing
+
+```{r}
+  set.seed(1992)
+  trainRows <- createDataPartition(y = ndatos$classe, p = 0.90, list = FALSE )
+  train <- ndatos[trainRows,]
+  test <- ndatos[-trainRows,]
+```
+
+##Model
+After that I tried to fit a model by random forest but my PC worked for 2 hours and didn't finish, so i started over 
+but tried with Stochastic Gradient Boosting.
+  
+```{r, eval=FALSE}
+  fit <- train( classe ~ . , data = train , method="gbm" , verbose = FALSE )
+```
+
+In order to see how does it perform, I will predict the values of the training set
+```{r, results='hide', error=FALSE, warning=FALSE, message=FALSE}
+  pred <- predict(object = fit,newdata = train)
+```
+```{r}
+  table(train$classe,pred)
+```
+
+As can be seen, the fit is very good. In order to be more specific. I can calculate the error percentaje
+
+```{r}
+  pct <- count( train$classe == pred )
+  pct[pct$x=="FALSE","freq"] / nrow(train)
+```
+
+The fit's error rate is very low. 
+
+##Test
+I will proceed to test it in the other 10% of the data.
+
+```{r}
+  testpred <- predict(object = fit, newdata = test)
+  table(test$classe, testpred)
+  
+  pcttest <- count( test$classe == testpred)
+  pct[pcttest$x=="FALSE","freq"] / nrow(test)
+```
+
+
+##Answer
+Finally, predict the final test data
+
+```{r}
+  Finaltest <- read.csv(file = "./pml-testing.csv")
+
+  finaldatos <- Finaltest[,c(8,9,10,11,37,38,39,40,41,42,43,44,45,46,47,48,49,60,61,62,63,64,65,66,67,68,84,85,86,102,113,114,115,
+                     116,117,118,119,120,121,122,123,124,140,151,152,153,154,155,156,157,158,159,160)]
+  
+  finalpred <- predict( object = fit, newdata = finaldatos)
+```
+
+And generate the files
+
+```{r, eval=FALSE}
+  pml_write_files = function(x){
+    n = length(x)
+    for(i in 1:n){
+      filename = paste0("problem_id_",i,".txt")
+      write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+    }
+  }
+  
+  pml_write_files(finalpred)
+```
+  
